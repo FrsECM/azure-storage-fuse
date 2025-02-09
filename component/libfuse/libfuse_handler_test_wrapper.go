@@ -1,4 +1,4 @@
-//go:build !fuse2
+//go:build !fuse2 && !darwin
 
 /*
     _____           _____   _____   ____          ______  _____  ------
@@ -45,6 +45,7 @@ package libfuse
 //     __atomic_store_n(&handle_obj->dirty, 1, __ATOMIC_RELEASE);
 // }
 import "C"
+
 import (
 	"errors"
 	"io/fs"

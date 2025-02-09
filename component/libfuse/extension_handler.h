@@ -46,8 +46,10 @@
 // Decide whether to add fuse2 or fuse3
 #ifdef __FUSE2__
 #include <fuse.h>
-#else
+#elif defined(__FUSE3__)
 #include <fuse3/fuse.h>
+#elif defined(__DARWIN__)
+#include <fuse.h> // locatied in /usr/local/include
 #endif
 
 // -------------------------------------------------------------------------------------------------------------

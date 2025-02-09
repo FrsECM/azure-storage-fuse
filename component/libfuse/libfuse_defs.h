@@ -50,6 +50,9 @@
 #ifdef __FUSE2__
 enum  	fuse_readdir_flags { FUSE_READDIR_PLUS = (1 << 0) };
 enum  	fuse_fill_dir_flags { FUSE_FILL_DIR_PLUS = (1 << 1) };
+#elif defined(__DARWIN__)
+enum  	fuse_readdir_flags { FUSE_READDIR_PLUS = (1 << 0) };
+enum  	fuse_fill_dir_flags { FUSE_FILL_DIR_PLUS = (1 << 1) };
 #endif
 
 
@@ -127,7 +130,7 @@ extern int libfuse2_rename(char *src, char *dst);
 extern int libfuse2_chmod(char *path, mode_t mode);
 extern int libfuse2_chown(char *path, uid_t uid, gid_t gid);
 extern int libfuse2_utimens(char *path, timespec_t tv[2]);
-#else
+#elif defined(__FUSE3__)
 extern void *libfuse_init(fuse_conn_info_t *conn, fuse_config_t *cfg);
 extern int libfuse_getattr(char *path, stat_t *stbuf, fuse_file_info_t *fi);
 extern int libfuse_readdir(char *path, void *buf, fuse_fill_dir_t filler, off_t, fuse_file_info_t *, fuse_readdir_flags_t);
@@ -136,6 +139,15 @@ extern int libfuse_rename(char *src, char *dst, unsigned int flags);
 extern int libfuse_chmod(char *path, mode_t mode, fuse_file_info_t *fi);
 extern int libfuse_chown(char *path, uid_t uid, gid_t gid, fuse_file_info_t *fi);
 extern int libfuse_utimens(char *path, timespec_t tv[2], fuse_file_info_t *fi);
+#elif defined(__DARWIN__)
+extern void *libfuse2_init(fuse_conn_info_t *conn);
+extern int libfuse2_getattr(char *path, stat_t *stbuf);
+extern int libfuse2_readdir(char *path, void *buf, fuse_fill_dir_t filler, off_t, fuse_file_info_t *);
+extern int libfuse2_truncate(char *path, off_t off);
+extern int libfuse2_rename(char *src, char *dst);
+extern int libfuse2_chmod(char *path, mode_t mode);
+extern int libfuse2_chown(char *path, uid_t uid, gid_t gid);
+extern int libfuse2_utimens(char *path, timespec_t tv[2]);
 #endif
 
 // Callbacks implemented in C (native_file_io.h): IO on locally cached files is served without calling into Go

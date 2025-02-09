@@ -39,19 +39,27 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <linux/fs.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
+// Select platform-specific filesystem headers.
+#ifdef __DARWIN__
+#include <sys/mount.h>
+#else
+#include <linux/fs.h>
+#endif
 
-// Decide whether to add fuse2 or fuse3
+
+// Select the FUSE implementation for the current build.
 #ifdef __FUSE2__
 #include <fuse.h>
-#else
+#elif defined(__FUSE3__)
 #include <fuse3/fuse.h>
 #include "libfuse_compat.h"
+#elif defined(__DARWIN__)
+#include <fuse.h>
 #endif
 
 /*
@@ -63,7 +71,7 @@
  * 3.10, those macros described the public interface version rather than the
  * package version; libfuse 3.5 through 3.9 therefore reported version 3.2.
  */
-#if !defined(__FUSE2__) && defined(FUSE_CAP_NO_OPENDIR_SUPPORT)
+#if !defined(__FUSE2__) && !defined(__DARWIN__) && defined(FUSE_CAP_NO_OPENDIR_SUPPORT)
 #define LIBFUSE_HAS_CACHE_READDIR 1
 #else
 #define LIBFUSE_HAS_CACHE_READDIR 0
@@ -113,7 +121,7 @@ static int populate_callbacks(fuse_operations_t *opt)
     opt->chmod      = (int (*)(const char *path, mode_t mode))libfuse2_chmod;
     opt->chown      = (int (*)(const char *path, uid_t uid, gid_t gid))libfuse2_chown;
     opt->utimens    = (int (*)(const char *path, const timespec_t tv[2]))libfuse2_utimens;
-    #else
+    #elif defined(__FUSE3__)
     opt->init       = (void *(*)(fuse_conn_info_t *, fuse_config_t *))libfuse_init;
     opt->getattr    = (int (*)(const char *, stat_t *, fuse_file_info_t *))libfuse_getattr;
     opt->readdir    = (int (*)(const char *path, void *buf, fuse_fill_dir_t filler, off_t, fuse_file_info_t *, 
@@ -123,6 +131,15 @@ static int populate_callbacks(fuse_operations_t *opt)
     opt->chmod      = (int (*)(const char *path, mode_t mode, fuse_file_info_t *fi))libfuse_chmod;
     opt->chown      = (int (*)(const char *path, uid_t uid, gid_t gid, fuse_file_info_t *fi))libfuse_chown;
     opt->utimens    = (int (*)(const char *path, const timespec_t tv[2], fuse_file_info_t *fi))libfuse_utimens;
+    #elif defined(__DARWIN__)
+    opt->init       = (void *(*)(fuse_conn_info_t *))libfuse2_init;
+    opt->getattr    = (int (*)(const char *, stat_t *))libfuse2_getattr;
+    opt->readdir    = (int (*)(const char *path, void *buf, fuse_fill_dir_t filler, off_t, fuse_file_info_t *))libfuse2_readdir;
+    opt->truncate   = (int (*)(const char *path, off_t off))libfuse2_truncate;
+    opt->rename     = (int (*)(const char *src, const char *dst))libfuse2_rename;
+    opt->chmod      = (int (*)(const char *path, mode_t mode))libfuse2_chmod;
+    opt->chown      = (int (*)(const char *path, uid_t uid, gid_t gid))libfuse2_chown;
+    opt->utimens    = (int (*)(const char *path, const timespec_t tv[2]))libfuse2_utimens;
     #endif
 
     return 0;
@@ -188,7 +205,8 @@ static int get_root_properties(stat_t *stbuf)
 static int fill_dir_entry(fuse_fill_dir_t filler, void *buf, char *name, stat_t *stbuf, off_t off)
 {
     return filler(buf, name, stbuf, off
-    #ifndef __FUSE2__
+    #ifdef __FUSE3__
+    // In FUSE3, we need to pass flags as well
         ,(fuse_fill_dir_flags_t) fill_dir_plus
     #endif
     );
